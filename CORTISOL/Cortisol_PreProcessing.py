@@ -17,6 +17,7 @@ but will be passed as an argument!
 
 TO BE DONE:
     Filter by various files
+    Output data!
 
 """
 #====================================================================
@@ -30,6 +31,17 @@ import numpy.lib.recfunctions as rec
 
 #====================================================================
 # FUNCTIONS
+#====================================================================
+def usage():
+    print ( 'USAGE: Cortisol_PreProcessing.py '
+                + ' <data_filename>'
+                + ' <selection_criteria_filename>' )
+    print ( '<data_filename> is a TAB delineated file'
+                + ' containing the cortisol data' )
+    print ( '<selection_criteria_filename> is a python file that'
+                + ' contains the answers (True or False) to'
+                + ' selection criteria' )
+                
 def import_data(filename):
     '''
     Read in the data as a TAB separated file
@@ -95,7 +107,7 @@ def import_data(filename):
     # Note that this is bl for b(ase)l(ine) not b'one'
     
     return data, measure_dict
-#====================================================================
+#--------------------------------------------------------------------
 
 def define_selection_column(data, in_column_name, out_column_name, criterion):
     '''
@@ -118,7 +130,7 @@ def define_selection_column(data, in_column_name, out_column_name, criterion):
                         usemask=False,
                         asrecarray=True )
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def create_overall_selection_data(data, measure_name):
 
@@ -148,7 +160,7 @@ def create_overall_selection_data(data, measure_name):
                         usemask=False,
                         asrecarray=True )
     return data
-#====================================================================    
+#--------------------------------------------------------------------
 
 def define_use_day_column(data):
     '''
@@ -191,7 +203,7 @@ def define_use_day_column(data):
                         usemask=False,
                         asrecarray=True )
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def define_calc_max_column(data):
     '''
@@ -221,7 +233,7 @@ def define_calc_max_column(data):
                             usemask=False,
                             asrecarray=True )
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def write_selection_columns(data, measure_dict):
     '''
@@ -299,7 +311,7 @@ def write_selection_columns(data, measure_dict):
     '''
     ############## TO BE DONE ################
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def compare_columns(data, name_1, name_2, name_combo, mask, function):
     '''
@@ -357,7 +369,7 @@ def compare_columns(data, name_1, name_2, name_combo, mask, function):
                         asrecarray=True )
     
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def run_comparisons_within_day(data, measure_dict):
     '''
@@ -438,7 +450,7 @@ def run_comparisons_within_day(data, measure_dict):
         data = compare_columns(data, name_1, name_2, name_diff, mask, 'diff')
     
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def run_comparisons_across_day(data, measure_dict):        
     '''
@@ -460,7 +472,7 @@ def run_comparisons_across_day(data, measure_dict):
         data = compare_columns(data, name_1, name_2, name_av, mask, 'average')
     
     return data
-#====================================================================
+#--------------------------------------------------------------------
 
 def data_report(data):
     '''
@@ -487,57 +499,40 @@ def data_report(data):
             print name
             plt.boxplot(data[name][data[name] <> 999])
             plt.show()
-    
-    # # Define cortisol data array
-
-    
-    # cort_data = np.array(data[av_names[0]])
-    
-    # for name in names[1:]:
-        # cort_data = np.vstack([cort_data, data[name]])
-    
-    # print 'Number cort measurements gt 3: {} from {} subs'.format(N_cort_gt_3, len(subs))
-
-    # names = data.dtype.names
-    # names = [ name for name in names if name.find('minawake') > 0 ]
-
-    # # Define cortisol data array
-    # min_data = np.array(data[names[0]])
-    # for name in names[1:]:
-        # min_data = np.vstack([min_data, data[name]])
-    
-    # # Mask all values that are > 3 and < 999
-    # N_min_gt_10_mask = ((min_data> 10) & (min_data < 999))
-    # N_min_gt_10 = np.sum(N_min_gt_10_mask)
-
-    # subs = data['ID'][np.any(N_min_gt_10_mask, axis=0)]
-    # print 'Number wake measuresments taken gt 10 mins after waking up: {} from {} subs'.format(N_min_gt_10, len(subs))
-    
-    # min_gt_10_data = data['bl_d1_minawake'][mask]
-    # N_min_gt_10 = np.sum(min_gt_10_data > 3)
+#--------------------------------------------------------------------
 
 #====================================================================
+# MAIN CODE
+#====================================================================
 # Run the main body of the script
+
+#--------------------------------------------------------------------
 # Define some variables
-'''
-For now I'm just going to set these values,
-but really you'll pass them:
-filename = sys.argv(1)
-selection_criteria_name = sys.argv(2)
-'''
-filename = '/work/imagingA/mrimpact/workspaces/CORTISOL/IMPACT_CortisolMeasure_KW.txt'
+try:
+    data_filename = sys(argv(1))
+    selection_criteria_name = sys(argv(2))
+except:
+    print 'Check your input files'
+    usage()
+    sys.exit()
+
+data_filename = '/work/imagingA/mrimpact/workspaces/CORTISOL/IMPACT_CortisolMeasure_KW.txt'
 selection_criteria_name = '/home/kw401/CAMBRIDGE_SCRIPTS/MRIMPACT_SCRIPTS/Cortisol_SelectionCriteria.py'
 
+#--------------------------------------------------------------------
 # Import data
 data, measure_dict = import_data(filename)
 
+#--------------------------------------------------------------------
 # Run the CortisolSelectionCriteria.py script
 # This will import your various selection criteria
 execfile(selection_criteria_name)
 
+#--------------------------------------------------------------------
 # Write in the selection columns
 data = write_selection_columns(data, measure_dict)
 
+#--------------------------------------------------------------------
 # Run the various compare columns:
 #   Compare within day:
 #       maxam cortisol measure for separate days
@@ -552,9 +547,7 @@ data = run_comparisons_within_day(data, measure_dict)
 #       dayrange
 data = run_comparisons_across_day(data, measure_dict)
 
+#--------------------------------------------------------------------
 # Run the data reporting function
 data_report(data)
-
-sys.exit()
-
 
