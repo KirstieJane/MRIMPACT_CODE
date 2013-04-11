@@ -42,7 +42,7 @@ def usage():
                 + ' contains the answers (True or False) to'
                 + ' selection criteria' )
                 
-def import_data(filename):
+def import_data(data_filename):
     '''
     Read in the data as a TAB separated file
     Correct some bonkers naming typos
@@ -117,10 +117,10 @@ def define_selection_column(data, in_column_name, out_column_name, criterion):
     if not criterion == '':
         eval_string = 'data[in_column_name]' + criterion
         mask = eval(eval_string)
-        out_data = np.zeros_like(data[in_column_name])
+        out_data = np.zeros(data[in_column_name].shape)
         out_data[mask] = 1
     else:
-        out_data = np.ones_like(data[in_column_name])
+        out_data = np.ones(data[in_column_name].shape)
     
     # Add this column of numbers to the recarray
     data = rec.append_fields(base=data,
@@ -476,6 +476,9 @@ def run_comparisons_across_day(data, measure_dict):
 
 def data_report(data):
     '''
+    This function creates figures of the data and
+    ---WILL---
+    contain tables of Ns etc.
     This function creates a table of N's for each possible
     combination of exclusion criteria
     
@@ -493,12 +496,15 @@ def data_report(data):
     d1_names = [ name for name in names if name.find('_d1_') > 0 ]
     d2_names = [ name for name in names if name.find('_d2_') > 0 ]
     
-    for name_list in [ d1_names, d2_names, av_names ]:
-        print name_list
-        for name in name_list:
-            print name
-            plt.boxplot(data[name][data[name] <> 999])
-            plt.show()
+    fig, axarr = plt.subplots(nrows=7, ncols=3, figsize = (8, 15))
+    
+    for j, name_list in enumerate( [ d1_names, d2_names, av_names ]):
+        for i, name in enumerate(name_list):
+            axarr[i,j].hist(data[name][data[name] <> 999], bins=10)
+            # axarr[i].set_xlabel(name)
+            #plt.boxplot(data[name][data[name] <> 999])
+        #plt.suptitle(name_list)
+    plt.show()
 #--------------------------------------------------------------------
 
 #====================================================================
@@ -509,19 +515,19 @@ def data_report(data):
 #--------------------------------------------------------------------
 # Define some variables
 try:
-    data_filename = sys(argv(1))
-    selection_criteria_name = sys(argv(2))
+    data_filename = str(sys.argv[1])
+    selection_criteria_name = str(sys.argv[2])
 except:
     print 'Check your input files'
     usage()
     sys.exit()
 
-data_filename = '/work/imagingA/mrimpact/workspaces/CORTISOL/IMPACT_CortisolMeasure_KW.txt'
-selection_criteria_name = '/home/kw401/CAMBRIDGE_SCRIPTS/MRIMPACT_SCRIPTS/Cortisol_SelectionCriteria.py'
+#data_filename = '/work/imagingA/mrimpact/workspaces/CORTISOL/IMPACT_CortisolMeasure_KW.txt'
+#selection_criteria_name = '/home/kw401/CAMBRIDGE_SCRIPTS/MRIMPACT_SCRIPTS/Cortisol_SelectionCriteria.py'
 
 #--------------------------------------------------------------------
 # Import data
-data, measure_dict = import_data(filename)
+data, measure_dict = import_data(data_filename)
 
 #--------------------------------------------------------------------
 # Run the CortisolSelectionCriteria.py script
@@ -551,3 +557,8 @@ data = run_comparisons_across_day(data, measure_dict)
 # Run the data reporting function
 data_report(data)
 
+'''
+Today is Lily Farris' 30th birthday! HAPPY BIRTHDAY LILY!
+Miss you, love you
+Kx
+'''
