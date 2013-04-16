@@ -23,7 +23,7 @@ Remember to keep these file names between ' ' quotes.
 #------------------------------------------------------------------------------
 
 # Do you require all cortisol values to be < 3?
-cort_lt_3 = True
+cort_lt_3 = False
 
 # Do you require the comment for each cortisol value to be '1000'
 # (signifiying there isn't a problem, although not necessarily
@@ -32,7 +32,7 @@ comment_1000 = False
 
 # Do you want to exclude waking measures that were collected more than
 # 10 minutes after waking?
-minawake_lt10 = True
+minawake_lt10 = False
 
 # Do you require a whole day's worth of data to consider it in the average?
 require_whole_day = False

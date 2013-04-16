@@ -27,6 +27,7 @@ import itertools as it
 import sys
 import matplotlib.pylab as plt
 import numpy.lib.recfunctions as rec
+from matplotlib.ticker import MaxNLocator, FormatStrFormatter, FixedLocator
 #====================================================================
 
 #====================================================================
@@ -76,6 +77,12 @@ def import_data(data_filename):
 
     data.dtype.names = names
 
+    # There is a 99 typo. Lets fix that here:
+    for name in names:
+        x = data[name]
+        if not np.issubdtype(x.dtype, str):
+            x[x==99] = 999
+
     # As another little clean up thing, if there is a 999
     # in the 'bl_d{day}_minawake' column then replace that
     # with a zero. It won't always mean that the measure was
@@ -86,14 +93,10 @@ def import_data(data_filename):
     data['bl_d1_minawake'][mask] = 0
     mask = data['bl_d2_minawake']==999
     data['bl_d2_minawake'][mask] = 0
-    
-    for name in data.dtype.names:
-        data[name][data[name]==99] = 999
 
-    # Use the following dictionaries to identify the
-    # various measures
-
-    # These dictionaries are indexed by TIME of measurement
+    # Use the following dictionary to identify the
+    # various measures.
+    # They are indexed by TIME of measurement
     # WITHIN a single day
     measure_dict = {    0: 'wake',
                         1: '30m',
@@ -138,8 +141,7 @@ def create_overall_selection_data(data, measure_name):
     
     # Find all the columns that have the measure name in their title
     # and also start with the word "Use"
-    use_names = [ name for name in names if name.find(measure_name) > 1 ]
-    use_names = [ name for name in use_names if name.find('Use') == 0 ]
+    use_names = [ name for name in names if (name.find(measure_name) > 1) & (name.find('Use') == 0) ]
     
     # Now create a numpy array of these columns
     selection_data = data[use_names[0]]
@@ -170,7 +172,7 @@ def define_use_day_column(data):
     # We're going to create a column (called use_day) that codes whether you
     # should use no day's data (0), just day 1 (1), just day 2 (2) or 
     # both days (3)
-    use_day_data = np.zeros_like(data['ID'])
+    use_day_data = np.zeros(data['ID'].shape)
     
     if require_whole_day:
         # This means that for each day separately we're going
@@ -191,14 +193,14 @@ def define_use_day_column(data):
         use_day_data[day_1_mask] = 1
         use_day_data[day_2_mask] = 2
         use_day_data[both_days_mask] = 3
-    
+        
     else:
         use_day_data = use_day_data + 3
         
     # Add this column of numbers to the recarray
-    data = rec.append_fields(base=data,
-                        names='bl_useDay',
-                        data=use_day_data,
+    data = rec.append_fields(base = data,
+                        names = 'bl_useDay',
+                        data = use_day_data,
                         dtypes=None,
                         usemask=False,
                         asrecarray=True )
@@ -214,7 +216,7 @@ def define_calc_max_column(data):
     # the maximum :)
     for day in xrange(1,3):
         calc_max_data_name = 'bl_d{day}_calc_max'.format(day=day)
-        calc_max_data = np.ones_like(data['ID'])
+        calc_max_data = np.ones(data['ID'].shape)
         
         if need_2_am:
             # Create two separate masks for measure 1 and measure 2:
@@ -259,7 +261,7 @@ def write_selection_columns(data, measure_dict):
             in_column_name = 'bl_d{day}_{time}cortisol'.format(day=day, time=measure_dict[time])
             out_column_name = 'Use_bl_d{day}_{time}cortisol_Lt3'.format(day=day, time=measure_dict[time])
             if cort_lt_3:
-                data = define_selection_column(data, in_column_name, out_column_name, ' < 3')
+                data = define_selection_column(data, in_column_name, out_column_name, ' < 3.')
             else:
                 data = define_selection_column(data, in_column_name, out_column_name, '')
 
@@ -267,7 +269,7 @@ def write_selection_columns(data, measure_dict):
             # CRITERION: All cortisol comments have to be '1000'
             '''
             in_column_name = 'bl_d{day}_{time}comment'.format(day=day, time=measure_dict[time])
-            out_column_name = 'Use_bl_d{day}_{time}comment_1000'.format(day=day, time=measure_dict[time])
+            out_column_name = 'Use_bl_d{day}_{time}cortisol_comment1000'.format(day=day, time=measure_dict[time])
             if comment_1000:
                 data = define_selection_column(data, in_column_name, out_column_name, ' == str(1000)')
             else:
@@ -278,7 +280,7 @@ def write_selection_columns(data, measure_dict):
             '''
             if time == 1:
                 in_column_name = 'bl_d{day}_minawake'.format(day=day)
-                out_column_name = 'Use_bl_d{day}_minawake_Lt10'.format(day=day)
+                out_column_name = 'Use_bl_d{day}_{time}cortisol_minawakeLt10'.format(day=day, time=measure_dict[time])
                 if minawake_lt10:
                     data = define_selection_column(data, in_column_name, out_column_name, ' < 10')
                 else:
@@ -333,21 +335,6 @@ def compare_columns(data, name_1, name_2, name_combo, mask, function):
     # Fill in the data initally with 999s
     data_combo = np.ones_like(data_1) * 999.
     
-    # Update the mask such that missing data is taken into 
-    # consideration:
-    mask_1 = data_1 == 999
-    mask_2 = data_2 == 999
-    
-    # If data 1 is missing then you can't use both point
-    # so you'll have to just use 2, and vice versa
-    mask[(mask==3) * (mask_1)] = 2
-    mask[(mask==3) * (mask_2)] = 1
-
-    # If you weren't supposed to be using both data points
-    # they you're SOL and now you can't use either!
-    mask[(mask==1) * (mask_1)] = 0
-    mask[(mask==2) * (mask_2)] = 0    
-
     # If there is only one data point fill that in
     data_combo[mask==1] = data_1[mask==1]
     data_combo[mask==2] = data_2[mask==2]
@@ -367,6 +354,15 @@ def compare_columns(data, name_1, name_2, name_combo, mask, function):
                         dtypes=None,
                         usemask=False,
                         asrecarray=True )
+                        
+    # And also include a copy of the mask
+    data = rec.append_fields(base=data,
+                        names=name_combo + '_mask',
+                        data=mask,
+                        dtypes=None,
+                        usemask=False,
+                        asrecarray=True )
+    
     
     return data
 #--------------------------------------------------------------------
@@ -392,41 +388,48 @@ def run_comparisons_within_day(data, measure_dict):
         name_2 = 'bl_d{day}_30mcortisol'.format(day=day)
         name_diff = 'bl_d{day}_CARcortisol'.format(day=day)
 
-        mask_1_name = 'Use_bl_d{day}_wakecortisol_Overall'.format(day=day)
-        mask_2_name = 'Use_bl_d{day}_30mcortisol_Overall'.format(day=day)
+        usevalue_1_name = 'Use_bl_d{day}_wakecortisol_Overall'.format(day=day)
+        usevalue_2_name = 'Use_bl_d{day}_30mcortisol_Overall'.format(day=day)
         
-        mask_1 = data[mask_1_name]
-        mask_2 = data[mask_2_name]
+        usevalue_1 = data[usevalue_1_name]
+        usevalue_2 = data[usevalue_2_name]
         
         # We can't calculate the difference if there is only 1 data point
-        mask = (mask_1 * mask_2) * 3
+        # usevalue column is only 0s and 3s
+        usevalue = (usevalue_1 * usevalue_2) * 3
 
-        data = compare_columns(data, name_1, name_2, name_diff, mask, 'diff')
+        data = compare_columns(data, name_1, name_2, name_diff, usevalue, 'diff')
         
+        #------------------------------------------------------------
         # Replace values that are negative with 999 if excl_neg_CAR is True
         if excl_neg_CAR:
-            mask = data[name_diff] < 0
-            data[name_diff][mask] = 999
+            mask_excl_neg = data[name_diff] < 0
+            data[name_diff][mask_excl_neg] = 999
         #------------------------------------------------------------
         
         # Calculate the maximum morning cortisol measure
         # defined as the largest of the two morning measures
         # and uses the same input data as the CAR
+        # INPUT: name_1, name_2 (from above)
+        # OUTPUT name_max
         name_max = 'bl_d{day}_maxamcortisol'.format(day=day)
 
-        # but a different mask
-        mask_max_name = 'bl_d{day}_calc_max'.format(day=day)
-        mask_max = data[mask_max_name]
+        # but a different mask for the values to use
+        # combining usevalue_1 and usevalue_2 with 
+        # the mask_calc_max column of 1s and 0s
+        calc_max_name = 'bl_d{day}_calc_max'.format(day=day)
+        usevalue_calc_max = data[calc_max_name]
 
-        mask_xor_1 = np.logical_xor(mask_1, mask_2) * mask_1
-        mask_xor_2 = np.logical_xor(mask_1, mask_2) * mask_2
-        mask[mask_xor_1] = 1
-        mask[mask_xor_2] = 2
-        mask * mask_max
+        usevalue_xor_1 = np.logical_xor(usevalue_1==1, usevalue_2==1) * usevalue_1
+        usevalue_xor_2 = np.logical_xor(usevalue_1==1, usevalue_2==1) * usevalue_2
+        usevalue[usevalue_xor_1==1] = 1
+        usevalue[usevalue_xor_2==1] = 2
+
+        usevalue = usevalue_calc_max * usevalue
+
+        data = compare_columns(data, name_1, name_2, name_max, usevalue, 'max')
         
-        data = compare_columns(data, name_1, name_2, name_max, mask, 'max')
         #------------------------------------------------------------
-        
         # Calculate the daytime average cortisol measure
         # defined as the difference between the daytime max
         # and the evening value
@@ -434,20 +437,23 @@ def run_comparisons_within_day(data, measure_dict):
         name_2 = 'bl_d{day}_evecortisol'.format(day=day)
         name_av = 'bl_d{day}_dayAvcortisol'.format(day=day)
         
-        mask_2_name = 'Use_bl_d{day}_evecortisol_Overall'.format(day=day)
+        # For maxam use the usevalue mask from the previous calculation
+        # but binarize it to just 1s and 0s
+        usevalue_1 = usevalue
+        usevalue_1[usevalue <> 0] = 1
+        # And get the use eve cortisol overall column for usevalue_2
+        usevalue_2_name = 'Use_bl_d{day}_evecortisol_Overall'.format(day=day)
+        usevalue_2 = data[usevalue_2_name]
         
-        # For maxam use the mask from the previous calculation
-        mask_1[mask > 0] = 1
+        # You can't calculate the average or range if you only have one
+        # datapoint!
+        usevalue = ( usevalue_1 * usevalue_2 ) * 3
 
-        mask_2 = data[mask_2_name]
-
-        mask = mask_1 * mask_2
-
-        data = compare_columns(data, name_1, name_2, name_av, mask, 'average')
+        data = compare_columns(data, name_1, name_2, name_av, usevalue, 'average')
         # And also calculate the range in cortisol values
         # throughout the day
         name_diff = 'bl_d{day}_dayRangecortisol'.format(day=day)
-        data = compare_columns(data, name_1, name_2, name_diff, mask, 'diff')
+        data = compare_columns(data, name_1, name_2, name_diff, usevalue, 'diff')
     
     return data
 #--------------------------------------------------------------------
@@ -467,9 +473,54 @@ def run_comparisons_across_day(data, measure_dict):
         name_2 = 'bl_d2_{time}cortisol'.format(time=measure_dict[time])
         name_av = 'bl_av_{time}cortisol'.format(time=measure_dict[time])
         
-        mask = data['bl_useDay']
+        # Now to create the mask
+        # Our first step is to look for either the Overall column,
+        # or the mask column
+        usedata_name_1 = 'Use_bl_d1_{time}cortisol_Overall'.format(time=measure_dict[time])
+        usedata_name_2 = 'Use_bl_d2_{time}cortisol_Overall'.format(time=measure_dict[time])
         
-        data = compare_columns(data, name_1, name_2, name_av, mask, 'average')
+        if usedata_name_1 in list(data.dtype.names):
+            usedata_1 = data[usedata_name_1]
+            usedata_2 = data[usedata_name_2]
+            usevalue = usedata_1 * usedata_2 * 3
+
+        else:
+            usedata_name_1 = 'bl_d1_{time}cortisol_mask'.format(time=measure_dict[time])
+            usedata_name_2 = 'bl_d2_{time}cortisol_mask'.format(time=measure_dict[time])
+            usedata_1 = data[usedata_name_1]
+            usedata_2 = data[usedata_name_2]
+            usedata_1[usedata_1 > 0] = 1
+            usedata_2[usedata_2 > 0] = 1
+            usevalue = ( usedata_1 * usedata_2 ) * 3
+
+        usevalue_xor_1 = np.logical_xor(usedata_1, usedata_2) * usedata_1
+        usevalue_xor_2 = np.logical_xor(usedata_1, usedata_2) * usedata_2
+        
+        usevalue_xor_1 = usevalue_xor_1.astype(int)
+        usevalue_xor_2 = usevalue_xor_2.astype(int)
+        
+        usevalue[usevalue_xor_1] = 1
+        usevalue[usevalue_xor_2] = 2
+            
+        useday = data['bl_useDay']
+        
+        # Combine your day masks:
+        # I can't think of a better way of writing this!!!
+        for i in xrange(usevalue.shape[0]):
+            if useday[i] == 0:
+                usevalue[i] = 0
+            elif useday[i] == 1:
+                if usevalue[i] == 2:
+                    usevalue[i] = 0
+                elif usevalue[i] == 3:
+                    usevalue[i] = 1
+            elif useday[i] == 2:
+                if usevalue[i] == 1:
+                    usevalue[i] = 0
+                elif usevalue[i] == 3:
+                    usevalue[i] = 2
+        
+        data = compare_columns(data, name_1, name_2, name_av, usevalue, 'average')
     
     return data
 #--------------------------------------------------------------------
@@ -492,20 +543,92 @@ def data_report(data):
     names = list(data.dtype.names)
     names = [ name for name in names if name.find('cortisol') > 0 ]
     names = [ name for name in names if name.find('bl') == 0 ]
+    names = [ name for name in names if not name.find('mask') > 0 ]
     av_names = [ name for name in names if name.find('av') > 0 ]
     d1_names = [ name for name in names if name.find('_d1_') > 0 ]
     d2_names = [ name for name in names if name.find('_d2_') > 0 ]
     
-    fig, axarr = plt.subplots(nrows=7, ncols=3, figsize = (8, 15))
+    fig, axarr = plt.subplots(nrows=7, ncols=3, figsize = (8, 12), sharex='col', sharey='row')
     
+    xlabels = [ 'Day 1', 'Day 2', 'Average' ]
+    ylabels = [ 'Wake', 'Wake + 30min', 'Evening', 'CAR', 'max AM', 'Day Range', 'Day Diff' ]
+
     for j, name_list in enumerate( [ d1_names, d2_names, av_names ]):
         for i, name in enumerate(name_list):
-            axarr[i,j].hist(data[name][data[name] <> 999], bins=10)
-            # axarr[i].set_xlabel(name)
+            mask = data[name]<>999
+            if 'Use_{name}_Overall'.format(name=name) in list(data.dtype.names):
+                mask_use = data['Use_{name}_Overall'.format(name=name)]==1
+                mask = mask * mask_use
+            else:
+                mask_use = data['{name}_mask'.format(name=name)] <> 0
+                mask = mask * mask_use
+            axarr[i,j].hist(data[name][mask], bins=10)
+            axarr[i,j].set_xlabel('cortisol value\n' + xlabels[j])
+            axarr[i,j].set_ylabel(ylabels[i])
+            xmajorlocator = MaxNLocator(5)
+            axarr[i,j].xaxis.set_major_locator(xmajorlocator)
+            ymajorlocator = MaxNLocator(5)
+            axarr[i,j].yaxis.set_major_locator(ymajorlocator)
+            n = np.sum([mask])
+            plt.text( 0.8, 0.9,
+                    'N: {n}'.format(n=n) ,
+                    horizontalalignment = 'center' ,
+                    verticalalignment = 'center' ,
+                    transform = axarr[i,j].transAxes ,
+                    fontsize = 10 )
             #plt.boxplot(data[name][data[name] <> 999])
-        #plt.suptitle(name_list)
+            axarr[i,j].set_title(xlabels[j])
+    
+    [a.set_ylabel(ylabel='') for a in axarr[:,1:].reshape(-1)]
+    [a.set_xlabel(xlabel='') for a in axarr[:(-1),:].reshape(-1)]
+    [a.set_title(label='') for a in axarr[1:,:].reshape(-1)]
+
     plt.show()
 #--------------------------------------------------------------------
+
+def vary_criteria(data):
+    '''
+    This command loops through all the combinations of the various
+    criteria and generates a table describing the number of subjects
+    that can be used for a given set of criteria
+    cort_lt_3 = True
+    comment_1000 = False
+    minawake_lt10 = True
+    require_whole_day = False
+    need_2_am = False
+    excl_neg_CAR = False
+    excl_med = False
+    filter_subs = True
+
+    include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
+    medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
+
+    '''
+    def set_options(option_list):
+        cort_lt_3 = option_list[0]
+        comment_1000 = option_list[1]
+        minawake_lt10 = option_list[2]
+        require_whole_day = option_list[3]
+        need_2_am = option_list[4]
+        exc_neg_CAR = option_list[5]
+        excl_med = option_list[6]
+        filter_subs = option_list[7]
+        
+        return locals()
+
+    option_list = [ cort_lt_3 ,
+                    comment_1000 ,
+                    minawake_lt10 ,
+                    require_whole_day ,
+                    need_2_am ,
+                    excl_neg_CAR ,
+                    excl_med ,
+                    filter_subs ]
+    
+    for combo in it.product(xrange(2), repeat = len(option_list)):
+        bool_list = [bool(option) for option in combo ]
+        vars = set_options(bool_list)
+    
 
 #====================================================================
 # MAIN CODE
