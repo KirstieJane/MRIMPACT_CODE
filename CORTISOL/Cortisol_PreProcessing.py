@@ -12,12 +12,14 @@ awakening response, the maximum am value, daytime average and
 daytime range.
 
 The various selection criteria can be set in the
-Cortisol_SelectionCriteria.py file that is currently hard coded
-but will be passed as an argument!
+Cortisol_SelectionCriteria.py file and is passed as an argument.
+
+The output is a tab delineated text file and a png file
+(with the same name but different endings)
 
 TO BE DONE:
-    Filter by various files
-    Output data!
+    Filter by medication
+    Possibly only output some of the information?
 
 """
 #====================================================================
@@ -25,9 +27,10 @@ TO BE DONE:
 import numpy as np
 import itertools as it
 import sys
+import os
 import matplotlib.pylab as plt
 import numpy.lib.recfunctions as rec
-from matplotlib.ticker import MaxNLocator, FormatStrFormatter, FixedLocator
+from matplotlib.ticker import MaxNLocator
 #====================================================================
 
 #====================================================================
@@ -36,12 +39,15 @@ from matplotlib.ticker import MaxNLocator, FormatStrFormatter, FixedLocator
 def usage():
     print ( 'USAGE: Cortisol_PreProcessing.py '
                 + ' <data_filename>'
-                + ' <selection_criteria_filename>' )
+                + ' <selection_criteria_filename>'
+                + ' <output_filename>' )
     print ( '<data_filename> is a TAB delineated file'
                 + ' containing the cortisol data' )
     print ( '<selection_criteria_filename> is a python file that'
                 + ' contains the answers (True or False) to'
                 + ' selection criteria' )
+    print ( '<output_filename> is, as it says, the TAB'
+                + ' delineated output file')
                 
 def import_data(data_filename):
     '''
@@ -111,6 +117,12 @@ def import_data(data_filename):
     
     return data, measure_dict
 #--------------------------------------------------------------------
+
+def keep_filter_subs(data, filter_filename):
+    sublist = np.loadtxt(filter_filename, dtype=int)
+    mask = np.in1d(data['ID'], sublist)
+    
+    return data[mask]
 
 def define_selection_column(data, in_column_name, out_column_name, criterion):
     '''
@@ -453,7 +465,7 @@ def run_comparisons_within_day(data, measure_dict):
         # And also calculate the range in cortisol values
         # throughout the day
         name_diff = 'bl_d{day}_dayRangecortisol'.format(day=day)
-        data = compare_columns(data, name_1, name_2, name_diff, usevalue, 'diff')
+        data = compare_columns(data, name_2, name_1, name_diff, usevalue, 'diff')
     
     return data
 #--------------------------------------------------------------------
@@ -487,8 +499,8 @@ def run_comparisons_across_day(data, measure_dict):
         else:
             usedata_name_1 = 'bl_d1_{time}cortisol_mask'.format(time=measure_dict[time])
             usedata_name_2 = 'bl_d2_{time}cortisol_mask'.format(time=measure_dict[time])
-            usedata_1 = data[usedata_name_1]
-            usedata_2 = data[usedata_name_2]
+            usedata_1 = np.copy(data[usedata_name_1])
+            usedata_2 = np.copy(data[usedata_name_2])
             usedata_1[usedata_1 > 0] = 1
             usedata_2[usedata_2 > 0] = 1
             usevalue = ( usedata_1 * usedata_2 ) * 3
@@ -551,7 +563,7 @@ def data_report(data):
     fig, axarr = plt.subplots(nrows=7, ncols=3, figsize = (8, 12), sharex='col', sharey='row')
     
     xlabels = [ 'Day 1', 'Day 2', 'Average' ]
-    ylabels = [ 'Wake', 'Wake + 30min', 'Evening', 'CAR', 'max AM', 'Day Range', 'Day Diff' ]
+    ylabels = [ 'Wake', 'Wake + 30min', 'Evening', 'CAR', 'max AM', 'Day Average', 'Day Range' ]
 
     for j, name_list in enumerate( [ d1_names, d2_names, av_names ]):
         for i, name in enumerate(name_list):
@@ -583,52 +595,12 @@ def data_report(data):
     [a.set_xlabel(xlabel='') for a in axarr[:(-1),:].reshape(-1)]
     [a.set_title(label='') for a in axarr[1:,:].reshape(-1)]
 
-    plt.show()
+    fig_filename = os.path.splitext(output_filename)[0] + '.png'
+    
+    plt.savefig(fig_filename, dpi=None, facecolor='w', edgecolor='w',
+          orientation='portrait', papertype=None, format=None,
+          transparent=True, bbox_inches=None, pad_inches=0.1)
 #--------------------------------------------------------------------
-
-def vary_criteria(data):
-    '''
-    This command loops through all the combinations of the various
-    criteria and generates a table describing the number of subjects
-    that can be used for a given set of criteria
-    cort_lt_3 = True
-    comment_1000 = False
-    minawake_lt10 = True
-    require_whole_day = False
-    need_2_am = False
-    excl_neg_CAR = False
-    excl_med = False
-    filter_subs = True
-
-    include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
-    medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
-
-    '''
-    def set_options(option_list):
-        cort_lt_3 = option_list[0]
-        comment_1000 = option_list[1]
-        minawake_lt10 = option_list[2]
-        require_whole_day = option_list[3]
-        need_2_am = option_list[4]
-        exc_neg_CAR = option_list[5]
-        excl_med = option_list[6]
-        filter_subs = option_list[7]
-        
-        return locals()
-
-    option_list = [ cort_lt_3 ,
-                    comment_1000 ,
-                    minawake_lt10 ,
-                    require_whole_day ,
-                    need_2_am ,
-                    excl_neg_CAR ,
-                    excl_med ,
-                    filter_subs ]
-    
-    for combo in it.product(xrange(2), repeat = len(option_list)):
-        bool_list = [bool(option) for option in combo ]
-        vars = set_options(bool_list)
-    
 
 #====================================================================
 # MAIN CODE
@@ -640,13 +612,11 @@ def vary_criteria(data):
 try:
     data_filename = str(sys.argv[1])
     selection_criteria_name = str(sys.argv[2])
+    output_filename = str(sys.argv[3])
 except:
     print 'Check your input files'
     usage()
     sys.exit()
-
-#data_filename = '/work/imagingA/mrimpact/workspaces/CORTISOL/IMPACT_CortisolMeasure_KW.txt'
-#selection_criteria_name = '/home/kw401/CAMBRIDGE_SCRIPTS/MRIMPACT_SCRIPTS/Cortisol_SelectionCriteria.py'
 
 #--------------------------------------------------------------------
 # Import data
@@ -656,6 +626,10 @@ data, measure_dict = import_data(data_filename)
 # Run the CortisolSelectionCriteria.py script
 # This will import your various selection criteria
 execfile(selection_criteria_name)
+
+# If you have a sublist filter on then keep only those subjects
+if filter_subs:
+    data = keep_filter_subs(data, include_subs_list)
 
 #--------------------------------------------------------------------
 # Write in the selection columns
@@ -679,6 +653,12 @@ data = run_comparisons_across_day(data, measure_dict)
 #--------------------------------------------------------------------
 # Run the data reporting function
 data_report(data)
+
+#--------------------------------------------------------------------
+# Save the data
+plt.rec2csv(data, output_filename, delimiter='\t', formatd=None, withheader=True)
+
+#--------------------------------------------------------------------
 
 '''
 Today is Lily Farris' 30th birthday! HAPPY BIRTHDAY LILY!

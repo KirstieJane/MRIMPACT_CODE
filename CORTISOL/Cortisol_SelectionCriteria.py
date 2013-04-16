@@ -23,19 +23,19 @@ Remember to keep these file names between ' ' quotes.
 #------------------------------------------------------------------------------
 
 # Do you require all cortisol values to be < 3?
-cort_lt_3 = False
+cort_lt_3 = True
 
 # Do you require the comment for each cortisol value to be '1000'
 # (signifiying there isn't a problem, although not necessarily
 # signifying that there _is_ a problem)
-comment_1000 = False
+comment_1000 = True
 
 # Do you want to exclude waking measures that were collected more than
 # 10 minutes after waking?
-minawake_lt10 = False
+minawake_lt10 = True
 
 # Do you require a whole day's worth of data to consider it in the average?
-require_whole_day = False
+require_whole_day = True
 
 # Do you require two am values to calculate the maximum am value?
 need_2_am = False
@@ -49,13 +49,16 @@ excl_neg_CAR = False
 # Would you like to exclude participants who are taking medication on 
 # this list:
 excl_med = False
-medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
+#medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
+medication_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MedicationList.txt'
 
 # Would you like to filter the list according to another list of subjects?
 # (for example, a list of subIDs representing participants who have usable
 # mri data)
 filter_subs = True
-include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
+#include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
+include_subs_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MRIMPACT_sublist.txt'
+exclude_subs_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MRIMPACT_exclude_sublist.txt'
 
 #------------------------------------------------------------------------------
 # DO NOT EDIT BEYOND THIS LINE
