@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Cortisol_PreProcessing.py
+Name: Cortisol_PreProcessing.py
+
 Created by Kirstie Whitaker
 Contact information: kw401@cam.ac.uk
 
@@ -31,6 +32,24 @@ import os
 import matplotlib.pylab as plt
 import numpy.lib.recfunctions as rec
 from matplotlib.ticker import MaxNLocator
+import platform
+import string
+import re
+
+if platform.system() == 'Windows':
+    if os.path.isdir('C:\\Users\\Kirstie'):
+        sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\GENERAL_CODE\\')
+        sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\DOWNLOADED_CODE\\')
+    elif os.path.isdir('C:\\Users\\steve'):
+        sys.path.insert(0, 'C:\\Users\\steve\\Dropbox\\GitHub\\GENERAL_CODE\\')
+        sys.path.insert(0, 'C:\\Users\\steve\\Dropbox\\GitHub\\DOWNLOADED_CODE\\')
+    
+elif platform.system() == 'Linux':
+    sys.path.insert(0, '/home/kw401/CAMBRIDGE_SCRIPTS/GENERAL_SCRIPTS/')
+    sys.path.insert(0, '/home/kw401/CAMBRIDGE_SCRIPTS/DOWNLOADED_CODE/')
+
+# Import Kirstie's personal scripts
+import MyCoolFunctions as mcf
 #====================================================================
 
 #====================================================================
@@ -41,13 +60,19 @@ def usage():
                 + ' <data_filename>'
                 + ' <selection_criteria_filename>'
                 + ' <output_filename>' )
-    print ( '<data_filename> is a TAB delineated file'
+    print ''
+    print ( '\t<data_filename> is a TAB delineated file'
                 + ' containing the cortisol data' )
-    print ( '<selection_criteria_filename> is a python file that'
+    print ( '\t<selection_criteria_filename> is a python file that'
                 + ' contains the answers (True or False) to'
                 + ' selection criteria' )
-    print ( '<output_filename> is, as it says, the TAB'
+    print ( '\t<output_filename> is, as it says, the TAB'
                 + ' delineated output file')
+    print ( '\tFor example:')
+    print ('\t\t ./Cortisol_Preprocessing.py'
+                + ' IMPACT_Cortisol_data.txt'
+                + ' selection_criteria.py'
+                + ' cortisol_output_April2013.txt' )
                 
 def import_data(data_filename):
     '''
@@ -59,7 +84,7 @@ def import_data(data_filename):
                 measure_dict
                 minawake_dict
     '''
-    data = np.genfromtxt('IMPACT_CortisolMeasure_KW.txt',
+    data = np.genfromtxt(data_filename,
                             names=True, dtype=None,
                             delimiter='\t',
                             filling_values = 999)
@@ -118,11 +143,62 @@ def import_data(data_filename):
     return data, measure_dict
 #--------------------------------------------------------------------
 
-def keep_filter_subs(data, filter_filename):
-    sublist = np.loadtxt(filter_filename, dtype=int)
-    mask = np.in1d(data['ID'], sublist)
+def keep_filter_subs(data, inc_sublist_filename, excl_sublist_filename):
+    if os.path.isfile(inc_sublist_filename):
+        inc_sublist = np.loadtxt(inc_sublist_filename, dtype=int)
+        keep_mask = np.in1d(data['ID'], inc_sublist)
+    else:
+        keep_mask = np.ones(data['ID'].shape)==1
+    if os.path.isfile(excl_sublist_filename):
+        excl_sublist = np.loadtxt(excl_sublist_filename, dtype=int)
+        excl_mask = np.logical_not(np.in1d(data['ID'], excl_sublist))
+    else:
+        excl_mask = np.ones(data['ID'].shape)==1
+    
+    mask = keep_mask * excl_mask
+    return data[mask]
+#--------------------------------------------------------------------
+
+def excl_med_subs(data, medlist_file, medlist_special_cases_file):
+    # Read in the meds column
+    meds = data['bl_med_name']
+
+    # Read in the exclude_meds list
+    with open(medlist_file) as f:
+        exclude_meds = f.read().splitlines()
+    # And make sure all the words are uppercase
+    exclude_meds = [ string.upper(med) for med in exclude_meds ]
+    exclude_meds = [ med.strip() for med in exclude_meds ]
+
+    # Read in the special cases
+    with open(medlist_special_cases_file) as f:
+        special_cases = f.read().splitlines()
+    # And make sure these special cases are all upper case
+    # and don't have any leading or trailing whitespace
+    special_cases = [ string.upper(case) for case in special_cases ]
+    special_cases = [ case.strip('"') for case in special_cases ]
+    special_cases = [ case.strip() for case in special_cases ]
+
+    # Create a mask that is all True (to start off with)
+    mask = np.ones(meds.shape)==1
+
+    # Loop through and remove all the special cases
+    for i, med in enumerate(meds):
+        med = med.strip('"')
+        med = med.strip()
+        med = string.upper(med)
+        mask[i] = False if med.strip('"') in special_cases else mask[i]
+    
+    # Now loop through and remove any subject that has any of the 
+    # exclude meds words in their meds column
+    for i, med in enumerate(meds):
+        for med_word in re.sub(',|;|"|\.| ','_', med).split('_'):
+            med_word = string.upper(med_word)
+            mask[i] = False if med_word in exclude_meds else mask[i]
     
     return data[mask]
+    
+#--------------------------------------------------------------------
 
 def define_selection_column(data, in_column_name, out_column_name, criterion):
     '''
@@ -290,7 +366,7 @@ def write_selection_columns(data, measure_dict):
             '''
             # CRITERION: Wake cortisol has to be acquired within 10 minutes of waking
             '''
-            if time == 1:
+            if time == 0:
                 in_column_name = 'bl_d{day}_minawake'.format(day=day)
                 out_column_name = 'Use_bl_d{day}_{time}cortisol_minawakeLt10'.format(day=day, time=measure_dict[time])
                 if minawake_lt10:
@@ -494,7 +570,7 @@ def run_comparisons_across_day(data, measure_dict):
         if usedata_name_1 in list(data.dtype.names):
             usedata_1 = data[usedata_name_1]
             usedata_2 = data[usedata_name_2]
-            usevalue = usedata_1 * usedata_2 * 3
+            usevalue = ( usedata_1 * usedata_2 ) * 3
 
         else:
             usedata_name_1 = 'bl_d1_{time}cortisol_mask'.format(time=measure_dict[time])
@@ -508,14 +584,11 @@ def run_comparisons_across_day(data, measure_dict):
         usevalue_xor_1 = np.logical_xor(usedata_1, usedata_2) * usedata_1
         usevalue_xor_2 = np.logical_xor(usedata_1, usedata_2) * usedata_2
         
-        usevalue_xor_1 = usevalue_xor_1.astype(int)
-        usevalue_xor_2 = usevalue_xor_2.astype(int)
+        usevalue[usevalue_xor_1==1] = 1
+        usevalue[usevalue_xor_2==1] = 2
         
-        usevalue[usevalue_xor_1] = 1
-        usevalue[usevalue_xor_2] = 2
-            
         useday = data['bl_useDay']
-        
+
         # Combine your day masks:
         # I can't think of a better way of writing this!!!
         for i in xrange(usevalue.shape[0]):
@@ -537,7 +610,7 @@ def run_comparisons_across_day(data, measure_dict):
     return data
 #--------------------------------------------------------------------
 
-def data_report(data):
+def data_report(data, criteria_title):
     '''
     This function creates figures of the data and
     ---WILL---
@@ -588,13 +661,14 @@ def data_report(data):
                     verticalalignment = 'center' ,
                     transform = axarr[i,j].transAxes ,
                     fontsize = 10 )
-            #plt.boxplot(data[name][data[name] <> 999])
             axarr[i,j].set_title(xlabels[j])
     
     [a.set_ylabel(ylabel='') for a in axarr[:,1:].reshape(-1)]
     [a.set_xlabel(xlabel='') for a in axarr[:(-1),:].reshape(-1)]
     [a.set_title(label='') for a in axarr[1:,:].reshape(-1)]
-
+    
+    fig.subplots_adjust(top=0.85)
+    plt.suptitle(criteria_title)
     fig_filename = os.path.splitext(output_filename)[0] + '.png'
     
     plt.savefig(fig_filename, dpi=None, facecolor='w', edgecolor='w',
@@ -602,6 +676,34 @@ def data_report(data):
           transparent=True, bbox_inches=None, pad_inches=0.1)
 #--------------------------------------------------------------------
 
+def data_save(data, output_filename):
+    # This isn't too hard, except we're going to put a copy of the
+    # measures we actually care about at the beginning!
+    names = list(data.dtype.names)
+    
+    # Find all the columns that have 'av' in their title and not
+    # and not '_mask'
+    drop_names = [ name for name in names if (name.find('_av_') == -1) | (name.find('_mask') > 0) ]
+    drop_names.pop(0)
+
+    important_data = rec.drop_fields(data, drop_names, usemask=False, asrecarray=True)
+    
+    names = list(important_data.dtype.names)
+    names[0] = 'SubID'
+    important_data.dtype.names = names
+
+    # Create two temporaray output_filenames:
+    temp_filename1 = output_filename + '_temp1'
+    temp_filename2 = output_filename + '_temp2'
+    
+    plt.rec2csv(data, temp_filename1, delimiter='\t', formatd=None, withheader=True)
+    plt.rec2csv(important_data, temp_filename2, delimiter='\t', formatd=None, withheader=True)
+    
+    mcf.KW_paste(temp_filename2, temp_filename1, output_filename)
+    mcf.KW_rmforce(temp_filename1)
+    mcf.KW_rmforce(temp_filename2)
+#--------------------------------------------------------------------
+    
 #====================================================================
 # MAIN CODE
 #====================================================================
@@ -610,9 +712,9 @@ def data_report(data):
 #--------------------------------------------------------------------
 # Define some variables
 try:
-    data_filename = str(sys.argv[1])
-    selection_criteria_name = str(sys.argv[2])
-    output_filename = str(sys.argv[3])
+    data_filename = sys.argv[1]
+    selection_criteria_name = sys.argv[2]
+    output_filename = sys.argv[3]
 except:
     print 'Check your input files'
     usage()
@@ -629,8 +731,20 @@ execfile(selection_criteria_name)
 
 # If you have a sublist filter on then keep only those subjects
 if filter_subs:
-    data = keep_filter_subs(data, include_subs_list)
+    os.path.isfile(include_subs_list)
+    try:
+        include_subs_file = include_subs_list
+    except:
+        include_subs_file = ' '
+    try:
+        exclude_subs_file = exclude_subs_list
+    except:
+        exclude_subs_file = ' '
+        
+    data = keep_filter_subs(data, include_subs_file, exclude_subs_file)
 
+if excl_med:
+    data = excl_med_subs(data, medlist_file, medlist_special_cases_file)
 #--------------------------------------------------------------------
 # Write in the selection columns
 data = write_selection_columns(data, measure_dict)
@@ -652,11 +766,11 @@ data = run_comparisons_across_day(data, measure_dict)
 
 #--------------------------------------------------------------------
 # Run the data reporting function
-data_report(data)
+data_report(data, criteria_title)
 
 #--------------------------------------------------------------------
 # Save the data
-plt.rec2csv(data, output_filename, delimiter='\t', formatd=None, withheader=True)
+data_save(data, output_filename)
 
 #--------------------------------------------------------------------
 

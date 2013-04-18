@@ -37,7 +37,7 @@ minawake_lt10 = True
 # Do you require a whole day's worth of data to consider it in the average?
 require_whole_day = True
 
-# Do you require two am values to calculate the maximum am value?
+# Do you require two am values on the same day to calculate that day's maximum am value?
 need_2_am = False
 
 # Do you wish to exclude the CAR value if it is negative?
@@ -48,21 +48,36 @@ excl_neg_CAR = False
 #------------------------------------------------------------------------------
 # Would you like to exclude participants who are taking medication on 
 # this list:
-excl_med = False
+excl_med = True
 #medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
-medication_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MedicationList.txt'
-
+medlist_file = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\Cortisol_ExcludeMedications.txt'
+medlist_special_cases_file = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\Cortisol_ExcludeMedications_SpecialCases.txt'
 # Would you like to filter the list according to another list of subjects?
 # (for example, a list of subIDs representing participants who have usable
 # mri data)
-filter_subs = True
+filter_subs = False
 #include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
-include_subs_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MRIMPACT_sublist.txt'
-exclude_subs_list = 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\MRIMPACT_CODE\\CORTISOL\\MRIMPACT_exclude_sublist.txt'
+include_subs_list = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\MRIMPACT_include_sublist.txt'
+exclude_subs_list = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\MRIMPACT_exclude_sublist.txt'
 
 #------------------------------------------------------------------------------
 # DO NOT EDIT BEYOND THIS LINE
 #------------------------------------------------------------------------------
+
+# Create a nice useful title:
+check_dict = {  0: r'$\times$',
+                1: r'$\checkmark$' }
+
+                
+criteria_title = ( 'DISTRIBUTIONS OF CORTISOL MEASURES\n'
+                    + 'USING THESE FILTERS:\n'
+                    + 'Cort measures less than 3 ' + check_dict[cort_lt_3] + '\t'
+                    + 'Comment must be "1000" ' + check_dict[comment_1000] + '\n'
+                    + 'Mins awake less than 10 ' + check_dict[minawake_lt10] + '\t'
+                    + 'Require whole day\'s worth of data ' + check_dict[require_whole_day] + '\n'
+                    + 'Require two measures in the morning to calc max ' + check_dict[need_2_am] + '\n'
+                    + 'Exclude medicated subjects ' + check_dict[excl_med] + '\n'
+                    + 'Filter subjects by external list ' + check_dict[filter_subs] )
 
 '''
 Template created to be used with Cortisol_PreProcessing.py script
