@@ -36,17 +36,7 @@ import platform
 import string
 import re
 
-if platform.system() == 'Windows':
-    if os.path.isdir('C:\\Users\\Kirstie'):
-        sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\GENERAL_CODE\\')
-        sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\DOWNLOADED_CODE\\')
-    elif os.path.isdir('C:\\Users\\steve'):
-        sys.path.insert(0, 'C:\\Users\\steve\\Dropbox\\GitHub\\GENERAL_CODE\\')
-        sys.path.insert(0, 'C:\\Users\\steve\\Dropbox\\GitHub\\DOWNLOADED_CODE\\')
-    
-elif platform.system() == 'Linux':
-    sys.path.insert(0, '/home/kw401/CAMBRIDGE_SCRIPTS/GENERAL_SCRIPTS/')
-    sys.path.insert(0, '/home/kw401/CAMBRIDGE_SCRIPTS/DOWNLOADED_CODE/')
+sys.path.insert(0, '/work/imagingA/mrimpact/workspaces/CORTISOL/SCRIPTS')
 
 # Import Kirstie's personal scripts
 import MyCoolFunctions as mcf

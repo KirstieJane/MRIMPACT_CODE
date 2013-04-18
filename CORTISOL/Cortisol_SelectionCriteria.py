@@ -58,7 +58,7 @@ excl_neg_CAR = False
 # Would you like to exclude participants who are taking medication on 
 # this list:
 excl_med = True
-medlist_file = '/work/imagingA/mrimpact/workspaces/CORTISOL/Cortisol_MedicationList.txt'
+medlist_file = '/work/imagingA/mrimpact/workspaces/CORTISOL/Cortisol_ExcludeMedications.txt'
 medlist_special_cases_file = '/work/imagingA/mrimpact/workspaces/CORTISOL/Cortisol_ExcludeMedications_SpecialCases.txt'
 
 # Would you like to filter the list according to another list of subjects?
