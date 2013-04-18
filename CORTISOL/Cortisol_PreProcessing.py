@@ -37,6 +37,7 @@ import string
 import re
 
 sys.path.insert(0, '/work/imagingA/mrimpact/workspaces/CORTISOL/SCRIPTS')
+sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\GENERAL_CODE')
 
 # Import Kirstie's personal scripts
 import MyCoolFunctions as mcf
