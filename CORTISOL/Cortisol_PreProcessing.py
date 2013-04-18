@@ -658,6 +658,10 @@ def data_report(data, criteria_title):
     [a.set_xlabel(xlabel='') for a in axarr[:(-1),:].reshape(-1)]
     [a.set_title(label='') for a in axarr[1:,:].reshape(-1)]
     
+    # Line up all the yaxis labels
+    # (they can jump around because the number of digits on the axis change)
+    [a.yaxis.set_label_coords(-0.25, 0.5) for a in axarr[:,0].reshape(-1)]
+    
     fig.subplots_adjust(top=0.85)
     plt.suptitle(criteria_title)
     fig_filename = os.path.splitext(output_filename)[0] + '.png'
