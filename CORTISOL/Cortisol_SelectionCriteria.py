@@ -16,6 +16,15 @@ that file, and that it contains the information you need. If it doesn't you'll
 have to update the path and file to fit your needs.
 
 Remember to keep these file names between ' ' quotes.
+
+Note that you can enter ' ' as a filename if you don't want to use that
+particular filter. For example, if you want to *exclude* a couple of subjects
+but don't have a filelist of subjects to *include* then you can set:
+
+    filter_subs = True
+    include_subs_list = ' '
+    exclude_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/exclude_subjects.txt'
+
 '''
 
 #------------------------------------------------------------------------------
@@ -49,16 +58,15 @@ excl_neg_CAR = False
 # Would you like to exclude participants who are taking medication on 
 # this list:
 excl_med = True
-#medication_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MedicationList.txt'
-medlist_file = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\Cortisol_ExcludeMedications.txt'
-medlist_special_cases_file = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\Cortisol_ExcludeMedications_SpecialCases.txt'
+medlist_file = '/work/imagingA/mrimpact/workspaces/CORTISOL/Cortisol_MedicationList.txt'
+medlist_special_cases_file = '/work/imagingA/mrimpact/workspaces/CORTISOL/Cortisol_ExcludeMedications_SpecialCases.txt'
+
 # Would you like to filter the list according to another list of subjects?
 # (for example, a list of subIDs representing participants who have usable
 # mri data)
 filter_subs = False
-#include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
-include_subs_list = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\MRIMPACT_include_sublist.txt'
-exclude_subs_list = 'C:\Users\steve\Dropbox\KW_MRIMPACT\CORTISOL\MRIMPACT_exclude_sublist.txt'
+include_subs_list = '/work/imagingA/mrimpact/workspaces/CORTISOL/MRIMPACT_subs.txt'
+exclude_subs_list = ' '
 
 #------------------------------------------------------------------------------
 # DO NOT EDIT BEYOND THIS LINE
@@ -83,7 +91,11 @@ criteria_title = ( 'DISTRIBUTIONS OF CORTISOL MEASURES\n'
 Template created to be used with Cortisol_PreProcessing.py script
     by Kirstie Whitaker
     in April 2013
-    for MRIMPACT cortisol data
+    for IMPACT cortisol data
     Contact info: kw401@cam.ac.uk
-Version 0.1
+Version 1
+
+I hope this youtube video is still around when you read this.
+It's AMAZING.
+http://youtu.be/o8TssbmY-GM
 '''
