@@ -684,6 +684,11 @@ def data_save(data, output_filename):
     important_data = rec.drop_fields(data, drop_names, usemask=False, asrecarray=True)
     
     names = list(important_data.dtype.names)
+    
+    # Strip the beginning part to get shorter and easy to manage variable names
+    names[1:] = [ name[6:] for name in names[1:] ]
+    names[1:] = [ name[:(-8)] for name in names[1:] ]
+    names[1:] = [ name[0].upper() + name[1:] + 'Cort' for name in names[1:] ]
     names[0] = 'SubID'
     important_data.dtype.names = names
 
