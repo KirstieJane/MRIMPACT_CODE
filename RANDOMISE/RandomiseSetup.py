@@ -63,7 +63,78 @@ def usage():
     print '\teg: Randomise_DTIROIS_setup.py BehavData_130321.csv dti_sublist TBSS_120314'
 
 #------------------------------------------------
+def setup_data(behav_filename):
+    data = np.genfromtxt(behav_filename, dtype=None, names=True, delimiter='\t')
+    
+    ### SUBID
+    # Create a SubID column that is just the subid without the letter M
+    subids = data['ParticipantID']
+    subids = np.char.strip(subids, 'M')
+    subids = subids.astype(int)
+    data = nprf.append_fields(base = data, names = 'SubID',
+                                data = subids, usemask=False)
+    
+    ### TREATMENTARM
+    # Convert the TreatmentGroup into TreatmentArm integer values
+    treatment_dict = dict()
+    treatment_dict[0] = 'Control'
+    treatment_dict[1] = 'CBT'
+    treatment_dict[2] = 'STPP'
+    treatment_dict[3] = 'SCC'
 
+    treatment_arm_array = np.ones(data['TreatmentGroup'].shape) * 999
+    for i in range(4):
+        treatment_arm_array[data['TreatmentGroup']==treatment_dict[i]] = i
+        treatment_arm_array = treatment_arm_array.astype(int)
+    data = nprf.append_fields(base = data, names='TreatmentArm',
+                                data = treatment_arm_array, usemask=False)
+
+    ### DEPRESSED
+    # Add in a column called Depressed - based on the TreatmentArm
+    data = nprf.append_fields(base = data, names='Depressed',
+                                data = data['TreatmentArm'], usemask=False)
+
+    # Replace the values in Depressed with 1s and 0s
+    data['Depressed'][data['Depressed'] > 0] = 1
+    
+    ### MALE
+    # Create Male column of 1s and 0s
+    data = nprf.append_fields(base = data, names='Male',
+                                data = data['TreatmentArm'], usemask=False)
+    data['Male'][data['Sex'] == 'M'] = 1
+    data['Male'][data['Sex'] == 'F'] = 0
+    
+    return data
+
+def merge_cort(data, cortisol_filename):
+    
+    cort_data = np.genfromtxt(cortisol_filename, dtype=None, names=True, delimiter='\t')
+    
+    names = list(cort_data.dtype.names)
+    
+    # Find all the columns in cort_data that have 'av' in their title
+    # and not '_mask'
+    drop_names = names[8:]
+
+    cort_data = nprf.drop_fields(cort_data, drop_names, usemask=False, asrecarray=True)
+    
+    data = nprf.join_by('SubID', data, cort_data, jointype='leftouter',
+                            r1postfix='KW', r2postfix='KW2', usemask=False,asrecarray=True)
+    
+    # Bizzarely, the join_by function pads with the biggest numbers it can think of!
+    # So we're going to replace everything over 999 with 999
+    for name in names[1:8]:
+        data[name][data[name]>999] = 999
+    
+    # Define a UsableCort field: 1 if ANY of the cortisol values are not 999
+    cort_array = np.vstack( [ data[name] for name in names[1:8]])
+    usable_cort_array = np.ones(cort_array.shape[1])
+    usable_cort_array[np.any(cort_array<>999, axis=0)] = 1
+    
+    data = nprf.append_fields(base = data, names='UsableCort', data = usable_cort_array, usemask=False)
+
+    return data
+    
 def make_subs_array(data):
     """
     A very simple little function that just adds t1 to the
@@ -99,13 +170,29 @@ def create_mask_all(data, usable_mri_subs):
     # If you have chosen to require all measures then this
     # this function also masks everyone who has 999 for any values
     # of any measure
-    for measure in measures:
-        #~~~~~~~~~~~~~~~~~~~~~~~~~#
-        # UP TO HERE!!!
-        #~~~~~~~~~~~~~~~~~~~~~~~~~#
+    if req_all_measures:
+        all_vars = set(measures + covars)
+        all_var_array = np.vstack([ data[var] for var in all_vars ])
+        # Mask any rows that have a value of 999
+        all_var_mask = np.all(all_var_array<>999, axis=0)
+        mask_all = mask_all * all_var_mask
+
     return mask_all
 
 #------------------------------------------------
+
+def excl_999s(data, measure, combo, mask):
+    all_vars = []
+    if not measure == '':
+        all_vars.append(measure)
+    all_vars.extend(combo)
+    if not all_vars == []:
+        all_var_array = np.vstack([ data[var] for var in all_vars ])
+        # Mask any rows that have a value of 999
+        all_var_mask = np.all(all_var_array<>999, axis=0)
+        mask = mask * all_var_mask
+    
+    return data, mask
 
 def write_files(subs_array, mat_array, con_array, test_name, dir):
     """
@@ -125,7 +212,6 @@ def write_files(subs_array, mat_array, con_array, test_name, dir):
         mat_file        Mat file for FSL analyses
         con_file        Con file for FSL analyses
     """
-    
     # Make sure output dir exists
     mcf.KW_mkdirs(dir)
     
@@ -216,9 +302,14 @@ def create_arrays(data, mask, measure, combo):
                         be as long as needed (including
                         an empty combination)
     """
+    # First thing is to put all the data together
+    # and get rid of any rows that have 999s in them
+    # (Note that this has to happen before demeaning
+    # because otherwise they aren't 999s anymore!!)
+    data, mask = excl_999s(data, measure, combo, mask)
 
     # If measure exists then create a var_array from
-    # the measure of interest
+    # the measure of interest and demean it
     if measure:
         var_array = data[measure][mask]
         var_array = var_array - var_array.mean()
@@ -267,13 +358,11 @@ def create_arrays(data, mask, measure, combo):
 
     # Create a contrast array by creating a bunch of zeros
     # and then put 1 and -1 at the beginning of the two lines
-    if mat_array.ndim == 1:
-        mat_array = mat_array - mat_array.mean()
-        template = np.array([[1],[-1]])
-        con_array = np.array([[1],[-1]])
+    template = np.array([[1],[-1]])
+    if mat_array.ndim == 1 & len(mat_array) > 0:
+        con_array = template
     elif mat_array.ndim > 1:
         con_array = np.zeros([2, mat_array.shape[0]])
-        template = np.array([[1],[-1]])
         con_array[:,:1] = template
     else:
         con_array = np.array([])
@@ -297,6 +386,7 @@ def create_correlations(dir, mask, data, subs_array):
                 # Don't repeat measures
                 # you'll have the same column in there twice!
                 if not measure in combo:
+                  
                     # Use create_arrays function to create mat and con arrays
                     test_name, mat_array, con_array = create_arrays(data, mask, measure, combo)
 
@@ -418,6 +508,9 @@ def create_ttests(perm_list, dir, mask, data, subs_array):
             for i in range(0,len(covars)+1):
                 for combo in it.combinations(covars, i):
                     if not measure in combo:
+                        # Exclude your 999 values
+                        data, mask = excl_999s(data, measure, combo, mask)
+
                         # Use create_arrays function to create mat and con arrays
                         ttest_name, ttest_name_2col, ttest_array, ttest_array_2col, con_array, con_array_2col = create_arrays_ttest(mask, data, perm_list, index, measure, combo)
 
@@ -451,25 +544,14 @@ except IndexError:
 # Define some variables
 glm_dir = os.path.join(output_dir, 'GLM')
 
+# Set up the data columns
+data = setup_data(behav_filename)
+
+# Set up the cortisol data and merge with the data array
+data = merge_cort(data, cortisol_filename)
 # Now load in the data
-data = np.genfromtxt(behav_filename, dtype=None, names=True, delimiter=',')
-cort_data = np.genfromtxt(cortisol_filename, dtype=None, names=True, delimiter='\t')
 usable_mri_subs = np.loadtxt(usable_mri_subs_filename, dtype=str)
 usable_mri_subs = np.char.replace(usable_mri_subs, 't1', '').astype(int)
-
-# Add in a column called Depressed - based on the TreatmentArm
-data = nprf.append_fields(base = data, names='Depressed', data = data['TreatmentArm'], usemask=False)
-# Replace the values in Depressed with 1s and 0s
-data['Depressed'][data['Depressed'] > 0] = 1
-
-###############################
-# FOR THIS TEST ONLY
-data = nprf.append_fields(base = data, names='UsableCort', data = data['Age'], usemask=False)
-data['UsableCort'] = np.random.rand(len(data['UsableCort']))
-data['UsableCort'][data['UsableCort'] > 0.2 ] = 1
-data['UsableCort'][data['UsableCort'] <= 0.2 ] = 0
-###############################
-
 
 #------------------------------------------------
 ### START CODE ###
@@ -498,6 +580,7 @@ for perm in it.product(range(3), repeat = len(split_vars)):
     '''
     The j counter keeps the split_vars in the right position
     and calls the appropriate values from the perm iterable
+    and calls the appropriate values from the perm iterable
     j will always count from 0 to 2 because we've coded the 
     groups as 0, 1 and 2 in the dictionary
     '''
@@ -513,7 +596,7 @@ for perm in it.product(range(3), repeat = len(split_vars)):
     # Now create the mask you need for this data
     # Initally mask is mask_all
     mask = mask_all
-    for j in range(3):
+    for j in range(len(split_vars)):
         '''
         This is a pretty kickass awesome line of code that takes
         advantage of list comprehensions

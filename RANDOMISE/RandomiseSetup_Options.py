@@ -14,7 +14,7 @@ measures of interest, and covariates of no interest
 # of participants you can include BUT you simplify your
 # demographics etc section of you paper because you aren't
 # changing the population based on which test you do.
-req_all_measures = True
+req_all_measures = False
 
 #----------------------------------------------------------
 # Measures of interest
@@ -23,8 +23,8 @@ req_all_measures = True
 # with +1 and -1 contrasts
 # For any TTests there will also be interaction
 # designs created
-measures = [ 'SMFQ', 'STAIS', 'STAIT', 'Age', 'Male', 'Meds' ]
-
+#measures = [ 'SMFQ', 'STAIS', 'STAIT', 'Age', 'Male', 'Meds' ]
+measures = [ 'SMFQ', 'WakeCort' ]
 
 #----------------------------------------------------------
 # Covariates of no interest
@@ -40,7 +40,7 @@ covars = [ 'Age', 'Male', 'Meds' ]
 # based, for example on gender, diagnosis, if they have
 # a particular measure etc, then you need to fill in 
 # the information here
-split_vars = [ 'Depressed', 'Meds', 'UsableCort', 'Male' ]
+split_vars = [ 'Depressed', 'UsableCort' ]
 
 group_dict = dict()
 group_dict['Depressed_0'] = 'Con'
