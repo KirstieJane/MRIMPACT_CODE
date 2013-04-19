@@ -220,12 +220,12 @@ def create_overall_selection_data(data, measure_name):
     
     # Find all the columns that have the measure name in their title
     # and also start with the word "Use"
-    use_names = [ name for name in names if (name.find(measure_name) > 1) & (name.find('Use') == 0) ]
+    use_names = [ name for name in names
+                    if (name.find(measure_name) > 1)
+                        & (name.find('Use') == 0) ]
     
     # Now create a numpy array of these columns
-    selection_data = data[use_names[0]]
-    for name in use_names[1:]:
-        selection_data = np.vstack([selection_data, data[name]])
+    selection_data = np.vstack([data[use_name] for use_name in use_names])
     
     # If there are any zeros then you can't use that data
     overall_selection_data = np.zeros_like(data[name])

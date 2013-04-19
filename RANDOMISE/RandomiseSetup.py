@@ -279,17 +279,15 @@ def create_correlations(dir, mask, data, subs_array):
     """
     # Create all the correlation design files
     # For each individual measure you care about
-    for measure in [ 'SMFQ', 'STAIS', 'STAIT', 'Age', 'Male', 'Meds' ]:
+    for measure in measures:
 
         # And the additional covariates that you're controling for
-        covars = [ 'Age', 'Male', 'Meds' ]
+        covars = covars
         
         # We're going to loop over all the combinations
         # eg: Age, Age_Male, Age_Male_Meds, Male, Male_Meds, Meds
         for i in range(0,len(covars)+1):
-        
             for combo in it.combinations(covars, i):
-            
                 # Don't repeat measures
                 # you'll have the same column in there twice!
                 if not measure in combo:
@@ -404,10 +402,12 @@ def create_ttests(perm_list, dir, mask, data, subs_array):
     
     for index in indices:
 
-        for measure in [ '', 'SMFQ', 'STAIS', 'STAIT', 'Age', 'Male', 'Meds' ]:
+        # For this one you need to include having no measure
+        # as well as all the ones you care about
+        for measure in [ '' ] + measures:
 
             # Now we're going to add in the additional covariates
-            covars = [ 'Age', 'Male', 'Meds' ]
+            covars = covars
             # We're going to loop over all the combinations
             # eg: Age, Age_Male, Age_Male_Meds, Male, Male_Meds, Meds
             for i in range(0,len(covars)+1):
@@ -426,9 +426,11 @@ def create_ttests(perm_list, dir, mask, data, subs_array):
 ### READ IN ARGUMENTS ###
 #------------------------------------------------
 try:
-    behav_filename= str(sys.argv[1])
-    usable_mri_subs_filename = str(sys.argv[2])
-    output_dir = str(sys.argv[3])
+    behav_filename= sys.argv[1]
+    cortisol_filename = sys.argv[2]
+    randomise_setup_options_file = sys.argv[3]
+    usable_mri_subs_filename = sys.argv[4]
+    output_dir = sys.argv[5]
 
 # If there aren't enough arguments then exit the script and print 
 # the reason to the screen
@@ -446,6 +448,7 @@ glm_dir = os.path.join(output_dir, 'GLM')
 
 # Now load in the data
 data = np.genfromtxt(behav_filename, dtype=None, names=True, delimiter=',')
+cort_data = np.genfromtxt(cortisol_filename, dtype=None, names=True, delimiter='\t')
 usable_mri_subs = np.loadtxt(usable_mri_subs_filename, dtype=str)
 usable_mri_subs = np.char.replace(usable_mri_subs, 't1', '').astype(int)
 
@@ -462,47 +465,13 @@ data['UsableCort'][data['UsableCort'] > 0.2 ] = 1
 data['UsableCort'][data['UsableCort'] <= 0.2 ] = 0
 ###############################
 
-#------------------------------------------------
-# Create the groups we're going to investigate
-#
-# All (every subject that meets the mask_all criteria)
-# Dep and Con (splitting by group)
-# Med (splitting by medication)
-# Cort (splitting by whether or not we have usable cortisol data)
-#
-# EG: Dep_Med_Cort --> Depressed subjects who are on medication
-#                      and have usable cortisol data
-#     Con_IgMed_NoCort --> Control subjects who may or may not be
-#                          on anti-depressant medication and do
-#                          not have cortisol measures
-#
-# There will be a correlations directory and a t-test dir
-# Because there are now loads more t-tests to run
-# not just the comparisons of depressed vs non-depressed
-# but also the med vs no med etc
-
-# I'm going to use a dictionary to translate the names
-# of the split vars (as named in the behaviour file)
-# into the group names for the design files
-'''
-This would be a cool area to edit to make more generalizable
-'''
-split_vars = ['Depressed', 'Meds', 'UsableCort']
-
-group_dict = dict()
-group_dict['Depressed_0'] = 'Con'
-group_dict['Depressed_1'] = 'Dep'
-group_dict['Depressed_2'] = 'All'
-group_dict['Meds_0'] = 'NoMed'
-group_dict['Meds_1'] = 'Med'
-group_dict['Meds_2'] = 'IgMed'
-group_dict['UsableCort_0'] = 'NoCort'
-group_dict['UsableCort_1'] = 'Cort'
-group_dict['UsableCort_2'] = 'IgCort'
 
 #------------------------------------------------
 ### START CODE ###
 #------------------------------------------------
+
+# Read in the personalised options:
+execfile(randomise_setup_options_file)
 
 # Make the subs array
 subs_array = make_subs_array(data)
