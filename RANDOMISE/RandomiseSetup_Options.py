@@ -7,6 +7,16 @@ Basically, this is where you define your groups,
 measures of interest, and covariates of no interest
 """
 #----------------------------------------------------------
+# Decision: Require all measures (and covars) for participant
+# to be included in analyses?
+#----------------------------------------------------------
+# If you do require all measures then you limit the number
+# of participants you can include BUT you simplify your
+# demographics etc section of you paper because you aren't
+# changing the population based on which test you do.
+req_all_measures = True
+
+#----------------------------------------------------------
 # Measures of interest
 #----------------------------------------------------------
 # These will all be added into your various columns

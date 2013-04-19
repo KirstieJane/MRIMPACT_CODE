@@ -36,6 +36,7 @@ from glob import glob
 
 # Import your personal scripts
 sys.path.insert(0, '/home/kw401/CAMBRIDGE_SCRIPTS/GENERAL_SCRIPTS/')
+sys.path.insert(0, 'C:\\Users\\Kirstie\\Dropbox\\GitHub\\GENERAL_CODE\\')
 import MyCoolFunctions as mcf
 #------------------------------------------------
 
@@ -52,10 +53,11 @@ def usage():
     Output: Text to terminal
     """
     
-    print 'Randomise_setup.py <behav_file> <cortisol_file> <usable_mri_sublist_file> <output_directory> '
+    print 'Randomise_setup.py <behav_file> <cortisol_file> <randomise_setup.py file> <usable_mri_sublist_file> <output_directory> '
     print '    <behav_file>: comma separated behavioral data with header'
     print '    <cortisol_file>: tab delimited file with cortisol data'
     print '                     probably output from Cortisol_PreProcessing.py'
+    print '    <randomise_setup.py file>: randomise file that contains your personal options'
     print '    <useable_mri_sublist_file>: list of subids to be included in analyses'
     print '    <output_directory>: Name (and path) of output directory'
     print '\teg: Randomise_DTIROIS_setup.py BehavData_130321.csv dti_sublist TBSS_120314'
@@ -94,6 +96,13 @@ def create_mask_all(data, usable_mri_subs):
     # Generate an overall mask
     mask_all = ab_brain_mask * braces_mask * mri_mask
     
+    # If you have chosen to require all measures then this
+    # this function also masks everyone who has 999 for any values
+    # of any measure
+    for measure in measures:
+        #~~~~~~~~~~~~~~~~~~~~~~~~~#
+        # UP TO HERE!!!
+        #~~~~~~~~~~~~~~~~~~~~~~~~~#
     return mask_all
 
 #------------------------------------------------
@@ -280,11 +289,8 @@ def create_correlations(dir, mask, data, subs_array):
     # Create all the correlation design files
     # For each individual measure you care about
     for measure in measures:
-
-        # And the additional covariates that you're controling for
-        covars = covars
-        
-        # We're going to loop over all the combinations
+        # We're going to loop over all the combinations of
+        # the various covariates of no interest
         # eg: Age, Age_Male, Age_Male_Meds, Male, Male_Meds, Meds
         for i in range(0,len(covars)+1):
             for combo in it.combinations(covars, i):
@@ -406,9 +412,8 @@ def create_ttests(perm_list, dir, mask, data, subs_array):
         # as well as all the ones you care about
         for measure in [ '' ] + measures:
 
-            # Now we're going to add in the additional covariates
-            covars = covars
             # We're going to loop over all the combinations
+            # of the various covariates you want to control for
             # eg: Age, Age_Male, Age_Male_Meds, Male, Male_Meds, Meds
             for i in range(0,len(covars)+1):
                 for combo in it.combinations(covars, i):
@@ -476,7 +481,7 @@ execfile(randomise_setup_options_file)
 # Make the subs array
 subs_array = make_subs_array(data)
 
-# Mask the data so you only include people that you have data for
+# Mask the data so you only include people that you have mri data for
 mask_all = create_mask_all(data, usable_mri_subs)
 
 # Loop through all the differen permutations of these split criteria
@@ -486,7 +491,9 @@ We're using the product command from itertools to make all the possible
 combinations - rather than combinations or permutations because we're
 basically nesting for loops - and this does it for us :)
 '''
-for perm in it.product(range(len(split_vars)), repeat = len(split_vars)):
+# Note that the range(3) here refers to the 0,1,2 codes
+# for each group splitting
+for perm in it.product(range(3), repeat = len(split_vars)):
     # Write these names from the dictionary into a names list
     '''
     The j counter keeps the split_vars in the right position
@@ -494,7 +501,7 @@ for perm in it.product(range(len(split_vars)), repeat = len(split_vars)):
     j will always count from 0 to 2 because we've coded the 
     groups as 0, 1 and 2 in the dictionary
     '''
-    names = [ group_dict[split_vars[j] + '_' + str(perm[j])] for j in range(3) ]
+    names = [ group_dict[split_vars[j] + '_' + str(perm[j])] for j in range(len(split_vars)) ]
 
     # Join the names all together
     '''
@@ -506,7 +513,7 @@ for perm in it.product(range(len(split_vars)), repeat = len(split_vars)):
     # Now create the mask you need for this data
     # Initally mask is mask_all
     mask = mask_all
-    for j in range(len(split_vars)):
+    for j in range(3):
         '''
         This is a pretty kickass awesome line of code that takes
         advantage of list comprehensions
