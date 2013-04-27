@@ -54,8 +54,8 @@ def usage():
     """
     
     print 'Randomise_setup.py <behav_file> <cortisol_file> <randomise_setup.py file> <usable_mri_sublist_file> <output_directory> '
-    print '    <behav_file>: comma separated behavioral data with header'
-    print '    <cortisol_file>: tab delimited file with cortisol data'
+    print '    <behav_file>: TAB delimited behavioral data with header'
+    print '    <cortisol_file>: TAB delimited file with cortisol data'
     print '                     probably output from Cortisol_PreProcessing.py'
     print '    <randomise_setup.py file>: randomise file that contains your personal options'
     print '    <useable_mri_sublist_file>: list of subids to be included in analyses'
